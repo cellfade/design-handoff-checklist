@@ -120,9 +120,9 @@ const DesignHandoffChecklist = () => {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
-    if (id) {
-      loadState(id);
+    const stateParam = urlParams.get('state');
+    if (stateParam) {
+      loadState(stateParam);
     }
     setIsLoading(false);
   }, []);
@@ -196,21 +196,22 @@ const DesignHandoffChecklist = () => {
     const state = {
       checklist,
       checkedItems,
-      figmaLink
+      figmaLink,
+      projectNotes
     };
     const stateString = encode(JSON.stringify(state));
-    const id = nanoid(10); // Generate a 10-character ID
-    localStorage.setItem(id, stateString);
-    return id;
+    return stateString;
   };
 
-  const loadState = (id) => {
-    const stateString = localStorage.getItem(id);
-    if (stateString) {
+  const loadState = (stateString) => {
+    try {
       const state = JSON.parse(decode(stateString));
-      setChecklist(state.checklist);
-      setCheckedItems(state.checkedItems);
-      setFigmaLink(state.figmaLink);
+      setChecklist(state.checklist || initialChecklist);
+      setCheckedItems(state.checkedItems || {});
+      setFigmaLink(state.figmaLink || '');
+      setProjectNotes(state.projectNotes || '');
+    } catch (error) {
+      console.error('Error loading state:', error);
     }
   };
 
@@ -234,12 +235,17 @@ const DesignHandoffChecklist = () => {
             className="w-full p-2 border rounded text-gray-800"
           />
           <Button onClick={() => {
-            const id = saveState();
-            const url = `${window.location.origin}?id=${id}`;
-            alert(`Shareable URL: ${url}`);
-          }} className="mt-2">
-            Save & Share
-          </Button>
+  const stateString = saveState();
+  const url = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Shareable URL copied to clipboard!');
+  }, (err) => {
+    console.error('Could not copy text: ', err);
+    alert(`Shareable URL: ${url}`);
+  });
+}}>
+  Save & Share
+</Button>
           {figmaLink && (
             <div className="mt-2 p-2 bg-white border rounded">
               <a href={figmaLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
