@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Check, X, Calendar, MessageSquare, Trash2, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, X, Calendar, MessageSquare, Trash2, Mail, Image as ImageIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { nanoid } from 'nanoid';
+import { encode, decode } from 'js-base64';
 
 const initialChecklist = [
   { id: 1, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
@@ -24,6 +26,20 @@ const initialChecklist = [
   { id: 14, category: 'Documentation', item: 'Interaction specifications', deadline: '', comments: [] },
   { id: 15, category: 'Handoff', item: 'Zeplin/Figma links shared', deadline: '', comments: [] },
 ];
+
+const SocialImagePreview = ({ url }) => {
+  const placeholderImage = "https://placehold.co/600x400?text=Figma+Preview";
+
+  return (
+    <div className="mt-4 border rounded-lg overflow-hidden">
+      <img src={placeholderImage} alt="Social preview" className="w-full h-auto" />
+      <div className="p-4 bg-white">
+        <h3 className="font-semibold text-lg mb-2">Figma Design Preview</h3>
+        <p className="text-sm text-gray-600">{url}</p>
+      </div>
+    </div>
+  );
+};
 
 const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
   <div className="text-gray-800">
@@ -100,6 +116,16 @@ const DesignHandoffChecklist = () => {
   const [figmaLink, setFigmaLink] = useState('');
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    if (id) {
+      loadState(id);
+    }
+    setIsLoading(false);
+  }, []);
 
   const handleToggle = (id) => {
     setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -132,11 +158,11 @@ const DesignHandoffChecklist = () => {
     return (checkedCount / checklist.length) * 100;
   };
 
-  const isFullyChecked = getProgress() === 100;
-
   const generateMarkdown = (includeAll = true) => {
     let markdown = `# Design Handoff Checklist\n\n`;
     markdown += `Figma Link: ${figmaLink}\n\n`;
+    
+    markdown += `![Figma Preview](https://placehold.co/600x400?text=Figma+Preview)\n\n`;
     
     categories.forEach(category => {
       markdown += `## ${category}\n\n`;
@@ -166,6 +192,32 @@ const DesignHandoffChecklist = () => {
     window.open(mailtoLink, '_blank');
   };
 
+  const saveState = () => {
+    const state = {
+      checklist,
+      checkedItems,
+      figmaLink
+    };
+    const stateString = encode(JSON.stringify(state));
+    const id = nanoid(10); // Generate a 10-character ID
+    localStorage.setItem(id, stateString);
+    return id;
+  };
+
+  const loadState = (id) => {
+    const stateString = localStorage.getItem(id);
+    if (stateString) {
+      const state = JSON.parse(decode(stateString));
+      setChecklist(state.checklist);
+      setCheckedItems(state.checkedItems);
+      setFigmaLink(state.figmaLink);
+    }
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -181,11 +233,19 @@ const DesignHandoffChecklist = () => {
             placeholder="Enter Figma link"
             className="w-full p-2 border rounded text-gray-800"
           />
+          <Button onClick={() => {
+            const id = saveState();
+            const url = `${window.location.origin}?id=${id}`;
+            alert(`Shareable URL: ${url}`);
+          }} className="mt-2">
+            Save & Share
+          </Button>
           {figmaLink && (
             <div className="mt-2 p-2 bg-white border rounded">
               <a href={figmaLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 {figmaLink}
               </a>
+              <SocialImagePreview url={figmaLink} />
             </div>
           )}
         </div>
@@ -234,8 +294,8 @@ const DesignHandoffChecklist = () => {
         <div className="mt-8 flex justify-between">
           <Button
             onClick={() => setIsApproveModalOpen(true)}
-            disabled={!isFullyChecked}
-            className={`flex items-center ${isFullyChecked ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded`}
+            disabled={getProgress() !== 100}
+            className={`flex items-center ${getProgress() === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded`}
           >
             <Check className="mr-2" size={16} />
             Approve Design
