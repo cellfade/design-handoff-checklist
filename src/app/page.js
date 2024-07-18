@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Check, X, Calendar, MessageSquare } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const initialChecklist = [
@@ -22,7 +22,7 @@ const initialChecklist = [
   { id: 15, category: 'Handoff', item: 'Zeplin/Figma links shared', deadline: '', comments: [] },
 ];
 
-const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd }) => (
+const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
   <div className="text-gray-800">
     <div className="flex items-center space-x-2 mb-4">
       <div 
@@ -52,9 +52,17 @@ const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd
     {item.comments.length > 0 && (
       <div className="ml-6 mt-2">
         <h4 className="text-sm font-semibold text-gray-800">Comments:</h4>
-        <ul className="list-disc list-inside">
+        <ul className="list-none">
           {item.comments.map((comment, index) => (
-            <li key={index} className="text-sm text-gray-700">{comment}</li>
+            <li key={index} className="text-sm text-gray-700 flex items-center justify-between mb-1">
+              <span>{comment}</span>
+              <button 
+                onClick={() => onCommentDelete(item.id, index)} 
+                className="text-red-500 hover:text-red-700 ml-2"
+              >
+                <Trash2 size={14} />
+              </button>
+            </li>
           ))}
         </ul>
       </div>
@@ -80,6 +88,14 @@ const DesignHandoffChecklist = () => {
   const handleCommentAdd = (id, comment) => {
     setChecklist(checklist.map(item => 
       item.id === id ? { ...item, comments: [...item.comments, comment] } : item
+    ));
+  };
+
+  const handleCommentDelete = (id, commentIndex) => {
+    setChecklist(checklist.map(item => 
+      item.id === id 
+        ? { ...item, comments: item.comments.filter((_, index) => index !== commentIndex) } 
+        : item
     ));
   };
 
@@ -147,6 +163,7 @@ const DesignHandoffChecklist = () => {
                     onToggle={handleToggle}
                     onDeadlineChange={handleDeadlineChange}
                     onCommentAdd={handleCommentAdd}
+                    onCommentDelete={handleCommentDelete}
                   />
                 ))
               }
