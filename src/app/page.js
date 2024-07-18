@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Check, X, Calendar, MessageSquare, Trash2 } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2, Mail } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const initialChecklist = [
   { id: 1, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
@@ -70,10 +73,33 @@ const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd
   </div>
 );
 
+const EmailModal = ({ isOpen, onClose, onSend, title }) => {
+  const [email, setEmail] = useState('');
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <Input
+          type="email"
+          placeholder="Enter email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Button onClick={() => onSend(email)}>Send Email</Button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const DesignHandoffChecklist = () => {
   const [checklist, setChecklist] = useState(initialChecklist);
   const [checkedItems, setCheckedItems] = useState({});
   const [figmaLink, setFigmaLink] = useState('');
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
 
   const handleToggle = (id) => {
     setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -104,6 +130,40 @@ const DesignHandoffChecklist = () => {
   const getProgress = () => {
     const checkedCount = Object.values(checkedItems).filter(Boolean).length;
     return (checkedCount / checklist.length) * 100;
+  };
+
+  const isFullyChecked = getProgress() === 100;
+
+  const generateMarkdown = (includeAll = true) => {
+    let markdown = `# Design Handoff Checklist\n\n`;
+    markdown += `Figma Link: ${figmaLink}\n\n`;
+    
+    categories.forEach(category => {
+      markdown += `## ${category}\n\n`;
+      checklist
+        .filter(item => item.category === category)
+        .filter(item => includeAll || !checkedItems[item.id])
+        .forEach(item => {
+          markdown += `- [${checkedItems[item.id] ? 'x' : ' '}] ${item.item}\n`;
+          if (item.deadline) markdown += `  Deadline: ${item.deadline}\n`;
+          if (item.comments.length > 0) {
+            markdown += `  Comments:\n`;
+            item.comments.forEach(comment => {
+              markdown += `    - ${comment}\n`;
+            });
+          }
+          markdown += '\n';
+        });
+    });
+
+    return markdown;
+  };
+
+  const sendEmail = (email, isApproval) => {
+    const subject = isApproval ? 'Design Approved' : 'Design Changes Requested';
+    const body = generateMarkdown(!isApproval);
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoLink, '_blank');
   };
 
   return (
@@ -172,16 +232,43 @@ const DesignHandoffChecklist = () => {
         ))}
 
         <div className="mt-8 flex justify-between">
-          <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center">
+          <Button
+            onClick={() => setIsApproveModalOpen(true)}
+            disabled={!isFullyChecked}
+            className={`flex items-center ${isFullyChecked ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded`}
+          >
             <Check className="mr-2" size={16} />
             Approve Design
-          </button>
-          <button className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded flex items-center">
+          </Button>
+          <Button
+            onClick={() => setIsRequestChangesModalOpen(true)}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded flex items-center"
+          >
             <X className="mr-2" size={16} />
             Request Changes
-          </button>
+          </Button>
         </div>
       </div>
+
+      <EmailModal
+        isOpen={isApproveModalOpen}
+        onClose={() => setIsApproveModalOpen(false)}
+        onSend={(email) => {
+          sendEmail(email, true);
+          setIsApproveModalOpen(false);
+        }}
+        title="Approve Design"
+      />
+
+      <EmailModal
+        isOpen={isRequestChangesModalOpen}
+        onClose={() => setIsRequestChangesModalOpen(false)}
+        onSend={(email) => {
+          sendEmail(email, false);
+          setIsRequestChangesModalOpen(false);
+        }}
+        title="Request Changes"
+      />
     </div>
   );
 };
