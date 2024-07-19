@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Check, X, Calendar, MessageSquare, Trash2, Mail, Image as ImageIcon } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { nanoid } from 'nanoid';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
+import { useTheme } from 'next-themes';
 import { encode, decode } from 'js-base64';
 
 const initialChecklist = [
@@ -44,28 +47,26 @@ const SocialImagePreview = ({ url }) => {
 const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
   <div className="text-gray-800">
     <div className="flex items-center space-x-2 mb-4">
-      <div 
-        className={`w-5 h-5 border border-gray-300 rounded flex items-center justify-center cursor-pointer ${checked ? 'bg-blue-500' : 'bg-white'}`}
-        onClick={() => onToggle(item.id)}
-      >
-        {checked && <Check size={14} color="white" />}
-      </div>
-      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-grow cursor-pointer" onClick={() => onToggle(item.id)}>
+      <Switch
+        checked={checked}
+        onCheckedChange={() => onToggle(item.id)}
+      />
+      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-grow cursor-pointer">
         {item.item}
       </label>
-      <input
+      <Input
         type="date"
         value={item.deadline}
         onChange={(e) => onDeadlineChange(item.id, e.target.value)}
-        className="border rounded px-2 py-1 text-sm text-gray-800"
+        className="w-40"
       />
-      <button onClick={() => {
+      <Button variant="outline" size="icon" onClick={() => {
         const comment = prompt('Enter a comment:');
         if (comment) onCommentAdd(item.id, comment);
-      }} className="text-blue-600 hover:text-blue-800">
-        <MessageSquare size={16} />
-      </button>
-      {item.deadline && <Calendar size={16} className="text-gray-600" />}
+      }}>
+        <MessageSquare className="h-4 w-4" />
+      </Button>
+      {item.deadline && <Calendar className="h-4 w-4 text-gray-500" />}
       {item.comments.length > 0 && <span className="text-sm text-gray-600">({item.comments.length})</span>}
     </div>
     {item.comments.length > 0 && (
@@ -75,12 +76,14 @@ const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd
           {item.comments.map((comment, index) => (
             <li key={index} className="text-sm text-gray-700 flex items-center justify-between mb-1">
               <span>{comment}</span>
-              <button 
+              <Button 
+                variant="outline"
+                size="icon"
                 onClick={() => onCommentDelete(item.id, index)} 
-                className="text-red-500 hover:text-red-700 ml-2"
+                className="text-red-500 hover:text-red-700"
               >
-                <Trash2 size={14} />
-              </button>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </li>
           ))}
         </ul>
@@ -110,12 +113,59 @@ const EmailModal = ({ isOpen, onClose, onSend, title }) => {
   );
 };
 
+const ShareModal = ({ isOpen, onClose, url }) => {
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      alert('URL copied to clipboard!');
+    }, (err) => {
+      console.error('Could not copy text: ', err);
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Shareable Link</DialogTitle>
+        </DialogHeader>
+        <div className="mt-4">
+          <Input value={url} readOnly />
+          <Button onClick={copyToClipboard} className="mt-2">Copy to Clipboard</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const ThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return (
+    <div className="flex items-center space-x-2">
+      <Sun className="h-4 w-4" />
+      <Switch
+        checked={theme === 'dark'}
+        onCheckedChange={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      />
+      <Moon className="h-4 w-4" />
+    </div>
+  );
+};
+
 const DesignHandoffChecklist = () => {
   const [checklist, setChecklist] = useState(initialChecklist);
   const [checkedItems, setCheckedItems] = useState({});
   const [figmaLink, setFigmaLink] = useState('');
+  const [projectNotes, setProjectNotes] = useState('');
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareableUrl, setShareableUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -164,6 +214,10 @@ const DesignHandoffChecklist = () => {
     
     markdown += `![Figma Preview](https://placehold.co/600x400?text=Figma+Preview)\n\n`;
     
+    if (projectNotes) {
+      markdown += `## Project Notes\n\n${projectNotes}\n\n`;
+    }
+    
     categories.forEach(category => {
       markdown += `## ${category}\n\n`;
       checklist
@@ -199,8 +253,7 @@ const DesignHandoffChecklist = () => {
       figmaLink,
       projectNotes
     };
-    const stateString = encode(JSON.stringify(state));
-    return stateString;
+    return encode(JSON.stringify(state));
   };
 
   const loadState = (stateString) => {
@@ -215,105 +268,93 @@ const DesignHandoffChecklist = () => {
     }
   };
 
+  const handleSaveAndShare = () => {
+    const stateString = saveState();
+    const url = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
+    setShareableUrl(url);
+    setIsShareModalOpen(true);
+  };
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          Design Handoff Checklist
-        </h1>
-        
-        <div className="mb-8">
-          <input
-            type="text"
-            value={figmaLink}
-            onChange={(e) => setFigmaLink(e.target.value)}
-            placeholder="Enter Figma link"
-            className="w-full p-2 border rounded text-gray-800"
-          />
-          <Button onClick={() => {
-  const stateString = saveState();
-  const url = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Shareable URL copied to clipboard!');
-  }, (err) => {
-    console.error('Could not copy text: ', err);
-    alert(`Shareable URL: ${url}`);
-  });
-}}>
-  Save & Share
-</Button>
-          {figmaLink && (
-            <div className="mt-2 p-2 bg-white border rounded">
-              <a href={figmaLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                {figmaLink}
-              </a>
-              <SocialImagePreview url={figmaLink} />
-            </div>
-          )}
-        </div>
-          
-        <Card className="mb-8">
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Design Handoff Checklist</h1>
+        <ThemeToggle />
+      </div>
+      
+      <div className="space-y-4 mb-8">
+        <Input
+          value={figmaLink}
+          onChange={(e) => setFigmaLink(e.target.value)}
+          placeholder="Enter Figma link"
+        />
+        <Button onClick={handleSaveAndShare}>
+          Save & Share
+        </Button>
+        <Textarea
+          value={projectNotes}
+          onChange={(e) => setProjectNotes(e.target.value)}
+          placeholder="Enter any additional notes for the project..."
+          rows={4}
+        />
+      </div>
+      
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Overall Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Progress value={getProgress()} className="w-full" />
+          <p className="text-right mt-2 text-sm">
+            {Math.round(getProgress())}% Complete
+          </p>
+        </CardContent>
+      </Card>
+
+      {categories.map(category => (
+        <Card key={category} className="mb-6">
           <CardHeader>
-            <CardTitle className="text-gray-900">Overall Progress</CardTitle>
+            <CardTitle>{category}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className="bg-blue-600 h-2.5 rounded-full" 
-                style={{width: `${getProgress()}%`}}
-              ></div>
-            </div>
-            <p className="text-right mt-2 text-sm text-gray-600">
-              {Math.round(getProgress())}% Complete
-            </p>
+            {checklist
+              .filter(item => item.category === category)
+              .map(item => (
+                <ChecklistItem
+                  key={item.id}
+                  item={item}
+                  checked={checkedItems[item.id] || false}
+                  onToggle={handleToggle}
+                  onDeadlineChange={handleDeadlineChange}
+                  onCommentAdd={handleCommentAdd}
+                  onCommentDelete={handleCommentDelete}
+                />
+              ))
+            }
           </CardContent>
         </Card>
+      ))}
 
-        {categories.map(category => (
-          <Card key={category} className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-gray-900">{category}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {checklist
-                .filter(item => item.category === category)
-                .map(item => (
-                  <ChecklistItem
-                    key={item.id}
-                    item={item}
-                    checked={checkedItems[item.id] || false}
-                    onToggle={handleToggle}
-                    onDeadlineChange={handleDeadlineChange}
-                    onCommentAdd={handleCommentAdd}
-                    onCommentDelete={handleCommentDelete}
-                  />
-                ))
-              }
-            </CardContent>
-          </Card>
-        ))}
-
-        <div className="mt-8 flex justify-between">
-          <Button
-            onClick={() => setIsApproveModalOpen(true)}
-            disabled={getProgress() !== 100}
-            className={`flex items-center ${getProgress() === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded`}
-          >
-            <Check className="mr-2" size={16} />
-            Approve Design
-          </Button>
-          <Button
-            onClick={() => setIsRequestChangesModalOpen(true)}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded flex items-center"
-          >
-            <X className="mr-2" size={16} />
-            Request Changes
-          </Button>
-        </div>
+      <div className="mt-8 flex justify-between">
+        <Button
+          onClick={() => setIsApproveModalOpen(true)}
+          disabled={getProgress() !== 100}
+          variant={getProgress() === 100 ? "default" : "secondary"}
+        >
+          <Check className="mr-2" size={16} />
+          Approve Design
+        </Button>
+        <Button
+          onClick={() => setIsRequestChangesModalOpen(true)}
+          variant="destructive"
+        >
+          <X className="mr-2" size={16} />
+          Request Changes
+        </Button>
       </div>
 
       <EmailModal
@@ -334,6 +375,12 @@ const DesignHandoffChecklist = () => {
           setIsRequestChangesModalOpen(false);
         }}
         title="Request Changes"
+      />
+
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        url={shareableUrl} 
       />
     </div>
   );
