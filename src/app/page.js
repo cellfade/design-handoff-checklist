@@ -32,52 +32,13 @@ const initialChecklist = [
   { id: 15, category: 'Handoff', item: 'Zeplin/Figma links shared', deadline: '', comments: [] },
 ];
 
-const SocialImagePreview = ({ url }) => {
-  const [previewUrl, setPreviewUrl] = useState(null);
-
-  useEffect(() => {
-    const fetchPreview = async () => {
-      if (!url) return;
-
-      const fileId = url.split('/').pop();
-      const apiUrl = `https://api.figma.com/v1/files/${fileId}/images`;
-      
-      try {
-        const response = await fetch(apiUrl, {
-          headers: {
-            'X-Figma-Token': process.env.NEXT_PUBLIC_FIGMA_TOKEN
-          }
-        });
-        const data = await response.json();
-        if (data.err) {
-          console.error('Figma API error:', data.err);
-          return;
-        }
-        const imageUrl = Object.values(data.images)[0];
-        setPreviewUrl(imageUrl);
-      } catch (error) {
-        console.error('Error fetching Figma preview:', error);
-      }
-    };
-
-    fetchPreview();
-  }, [url]);
-
-  if (!previewUrl) return null;
-
-  return (
-    <div className="mt-4 border rounded-lg overflow-hidden">
-      <img src={previewUrl} alt="Figma preview" className="w-full h-auto" />
-    </div>
-  );
-};
-
 const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
   <div className="text-gray-800 dark:text-gray-200">
     <div className="flex items-center space-x-2 mb-4">
       <Checkbox
         checked={checked}
         onCheckedChange={() => onToggle(item.id)}
+        className="border-gray-300 text-blue-600 focus:ring-blue-500"
       />
       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-grow cursor-pointer">
         {item.item}
@@ -185,13 +146,33 @@ const ThemeToggle = () => {
   );
 };
 
+const Footer = () => (
+  <footer
+  className="mt-12 py-6 bg-gray-100 dark:bg-gray-900 rounded-lg opacity-80 transition-opacity duration-300 hover:opacity-100">
+    <div className="container mx-auto flex justify-between items-center">
+      <div className="flex space-x-4">
+        <a href="https://github.com/cellfade" target="_blank" rel="noopener noreferrer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        </a>
+        <a href="https://x.com/cellfade" target="_blank" rel="noopener noreferrer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-twitter"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
+        </a>
+      </div>
+      <a href="https://agm.framer.website/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400">
+        Created by Andrew G Miller
+      </a>
+    </div>
+  </footer>
+);
+
 const DesignHandoffChecklist = () => {
   const [checklist, setChecklist] = useState(initialChecklist);
   const [checkedItems, setCheckedItems] = useState({});
   const [designer, setDesigner] = useState('');
-  const [figmaLink, setFigmaLink] = useState('');
+  const [designerEmail, setDesignerEmail] = useState('');
   const [projectLink, setProjectLink] = useState('');
   const [projectNotes, setProjectNotes] = useState('');
+  const [uploadedImage, setUploadedImage] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -231,6 +212,11 @@ const DesignHandoffChecklist = () => {
     ));
   };
 
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    setUploadedImage(URL.createObjectURL(file));
+  };
+
   const categories = [...new Set(checklist.map(item => item.category))];
 
   const getProgress = () => {
@@ -241,10 +227,8 @@ const DesignHandoffChecklist = () => {
   const generateMarkdown = (includeAll = true) => {
     let markdown = `# Design Handoff Checklist\n\n`;
     markdown += `Designer: ${designer}\n`;
-    markdown += `Figma Link: ${figmaLink}\n`;
+    markdown += `Designer Email: ${designerEmail}\n`;
     markdown += `Project Link: ${projectLink}\n\n`;
-    
-    markdown += `![Figma Preview](https://placehold.co/600x400?text=Figma+Preview)\n\n`;
     
     if (projectNotes) {
       markdown += `## Project Notes\n\n${projectNotes}\n\n`;
@@ -283,9 +267,10 @@ const DesignHandoffChecklist = () => {
       checklist,
       checkedItems,
       designer,
-      figmaLink,
+      designerEmail,
       projectLink,
-      projectNotes
+      projectNotes,
+      uploadedImage
     };
     return encode(JSON.stringify(state));
   };
@@ -296,9 +281,10 @@ const DesignHandoffChecklist = () => {
       setChecklist(state.checklist || initialChecklist);
       setCheckedItems(state.checkedItems || {});
       setDesigner(state.designer || '');
-      setFigmaLink(state.figmaLink || '');
+      setDesignerEmail(state.designerEmail || '');
       setProjectLink(state.projectLink || '');
       setProjectNotes(state.projectNotes || '');
+      setUploadedImage(state.uploadedImage || null);
     } catch (error) {
       console.error('Error loading state:', error);
     }
@@ -344,15 +330,28 @@ const DesignHandoffChecklist = () => {
             placeholder="Enter Designer name"
           />
           <Input
-            value={figmaLink}
-            onChange={(e) => setFigmaLink(e.target.value)}
-            placeholder="Enter Figma link"
+            type="email"
+            value={designerEmail}
+            onChange={(e) => setDesignerEmail(e.target.value)}
+            placeholder="Enter Designer email"
+            required
+            pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
           />
           <Input
             value={projectLink}
             onChange={(e) => setProjectLink(e.target.value)}
             placeholder="Enter Project link"
           />
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+          />
+          {uploadedImage && (
+            <div className="mt-4 border rounded-lg overflow-hidden">
+              <img src={uploadedImage} alt="Uploaded preview" className="w-full h-auto" />
+            </div>
+          )}
           <Button onClick={handleSaveAndShare}>
             Save & Share
           </Button>
@@ -364,19 +363,19 @@ const DesignHandoffChecklist = () => {
           />
         </div>
         
-        <SocialImagePreview url={figmaLink} />
-        
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={getProgress()} className="w-full" />
-            <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {Math.round(getProgress())}% Complete
-            </p>
-          </CardContent>
-        </Card>
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 py-4">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Progress value={getProgress()} className="w-full text-gray-900 dark:text-white" />
+              <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
+                {Math.round(getProgress())}% Complete
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
         {categories.map(category => (
           <Card key={category} className="mb-6">
@@ -446,6 +445,7 @@ const DesignHandoffChecklist = () => {
           url={shareableUrl} 
         />
       </div>
+      <Footer />
     </div>
   );
 };
