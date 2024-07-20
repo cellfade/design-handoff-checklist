@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -185,7 +186,7 @@ const Footer = () => (
           window.open('https://bento.me/cellfade', '_blank', 'noopener,noreferrer');
         }}
       >
-        Created by Andrew "Cellfade" Miller
+        Created by Andrew Miller
       </a>
     </div>
   </footer>
@@ -383,7 +384,7 @@ const DesignHandoffChecklist = () => {
           />
           {uploadedImage && (
             <div className="mt-4 border rounded-lg overflow-hidden">
-              <img src={uploadedImage} alt="Uploaded preview" className="w-full h-auto" />
+              <Image src={uploadedImage} alt="Uploaded preview" width={500} height={300} layout="responsive" />
             </div>
           )}
           <Button onClick={handleSaveAndShare}>
