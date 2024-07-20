@@ -7,10 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Progress } from '@/components/ui/progress';
 import { useTheme } from 'next-themes';
 import { encode, decode } from 'js-base64';
+import axios from 'axios';
 
 const initialChecklist = [
   { id: 1, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
@@ -31,23 +33,49 @@ const initialChecklist = [
 ];
 
 const SocialImagePreview = ({ url }) => {
-  const placeholderImage = "https://placehold.co/600x400?text=Figma+Preview";
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (!url) return;
+
+      const fileId = url.split('/').pop();
+      const apiUrl = `https://api.figma.com/v1/files/${fileId}/images`;
+      
+      try {
+        const response = await fetch(apiUrl, {
+          headers: {
+            'X-Figma-Token': process.env.NEXT_PUBLIC_FIGMA_TOKEN
+          }
+        });
+        const data = await response.json();
+        if (data.err) {
+          console.error('Figma API error:', data.err);
+          return;
+        }
+        const imageUrl = Object.values(data.images)[0];
+        setPreviewUrl(imageUrl);
+      } catch (error) {
+        console.error('Error fetching Figma preview:', error);
+      }
+    };
+
+    fetchPreview();
+  }, [url]);
+
+  if (!previewUrl) return null;
 
   return (
     <div className="mt-4 border rounded-lg overflow-hidden">
-      <img src={placeholderImage} alt="Social preview" className="w-full h-auto" />
-      <div className="p-4 bg-white">
-        <h3 className="font-semibold text-lg mb-2">Figma Design Preview</h3>
-        <p className="text-sm text-gray-600">{url}</p>
-      </div>
+      <img src={previewUrl} alt="Figma preview" className="w-full h-auto" />
     </div>
   );
 };
 
 const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
-  <div className="text-gray-800">
+  <div className="text-gray-800 dark:text-gray-200">
     <div className="flex items-center space-x-2 mb-4">
-      <Switch
+      <Checkbox
         checked={checked}
         onCheckedChange={() => onToggle(item.id)}
       />
@@ -66,21 +94,21 @@ const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd
       }}>
         <MessageSquare className="h-4 w-4" />
       </Button>
-      {item.deadline && <Calendar className="h-4 w-4 text-gray-500" />}
-      {item.comments.length > 0 && <span className="text-sm text-gray-600">({item.comments.length})</span>}
+      {item.deadline && <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+      {item.comments.length > 0 && <span className="text-sm text-gray-600 dark:text-gray-300">({item.comments.length})</span>}
     </div>
     {item.comments.length > 0 && (
       <div className="ml-6 mt-2">
-        <h4 className="text-sm font-semibold text-gray-800">Comments:</h4>
+        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Comments:</h4>
         <ul className="list-none">
           {item.comments.map((comment, index) => (
-            <li key={index} className="text-sm text-gray-700 flex items-center justify-between mb-1">
+            <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-center justify-between mb-1">
               <span>{comment}</span>
               <Button 
                 variant="outline"
                 size="icon"
                 onClick={() => onCommentDelete(item.id, index)} 
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -160,7 +188,9 @@ const ThemeToggle = () => {
 const DesignHandoffChecklist = () => {
   const [checklist, setChecklist] = useState(initialChecklist);
   const [checkedItems, setCheckedItems] = useState({});
+  const [designer, setDesigner] = useState('');
   const [figmaLink, setFigmaLink] = useState('');
+  const [projectLink, setProjectLink] = useState('');
   const [projectNotes, setProjectNotes] = useState('');
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
@@ -210,7 +240,9 @@ const DesignHandoffChecklist = () => {
 
   const generateMarkdown = (includeAll = true) => {
     let markdown = `# Design Handoff Checklist\n\n`;
-    markdown += `Figma Link: ${figmaLink}\n\n`;
+    markdown += `Designer: ${designer}\n`;
+    markdown += `Figma Link: ${figmaLink}\n`;
+    markdown += `Project Link: ${projectLink}\n\n`;
     
     markdown += `![Figma Preview](https://placehold.co/600x400?text=Figma+Preview)\n\n`;
     
@@ -250,7 +282,9 @@ const DesignHandoffChecklist = () => {
     const state = {
       checklist,
       checkedItems,
+      designer,
       figmaLink,
+      projectLink,
       projectNotes
     };
     return encode(JSON.stringify(state));
@@ -261,17 +295,30 @@ const DesignHandoffChecklist = () => {
       const state = JSON.parse(decode(stateString));
       setChecklist(state.checklist || initialChecklist);
       setCheckedItems(state.checkedItems || {});
+      setDesigner(state.designer || '');
       setFigmaLink(state.figmaLink || '');
+      setProjectLink(state.projectLink || '');
       setProjectNotes(state.projectNotes || '');
     } catch (error) {
       console.error('Error loading state:', error);
     }
   };
 
-  const handleSaveAndShare = () => {
+  const shortenUrl = async (longUrl) => {
+    try {
+      const response = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error shortening URL:', error);
+      return longUrl; // Return original URL if shortening fails
+    }
+  };
+
+  const handleSaveAndShare = async () => {
     const stateString = saveState();
-    const url = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
-    setShareableUrl(url);
+    const longUrl = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
+    const shortUrl = await shortenUrl(longUrl);
+    setShareableUrl(shortUrl);
     setIsShareModalOpen(true);
   };
 
@@ -280,108 +327,125 @@ const DesignHandoffChecklist = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Design Handoff Checklist</h1>
-        <ThemeToggle />
-      </div>
-      
-      <div className="space-y-4 mb-8">
-        <Input
-          value={figmaLink}
-          onChange={(e) => setFigmaLink(e.target.value)}
-          placeholder="Enter Figma link"
-        />
-        <Button onClick={handleSaveAndShare}>
-          Save & Share
-        </Button>
-        <Textarea
-          value={projectNotes}
-          onChange={(e) => setProjectNotes(e.target.value)}
-          placeholder="Enter any additional notes for the project..."
-          rows={4}
-        />
-      </div>
-      
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Overall Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Progress value={getProgress()} className="w-full" />
-          <p className="text-right mt-2 text-sm">
-            {Math.round(getProgress())}% Complete
-          </p>
-        </CardContent>
-      </Card>
-
-      {categories.map(category => (
-        <Card key={category} className="mb-6">
+    <div 
+      className="min-h-screen bg-cover bg-center py-8 px-4"
+      style={{ backgroundImage: `url('https://iili.io/dnzrCf1.png')` }}
+    >
+      <div className="container mx-auto max-w-4xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow-custom">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Design Handoff Checklist</h1>
+          <ThemeToggle />
+        </div>
+        
+        <div className="space-y-4 mb-8">
+          <Input
+            value={designer}
+            onChange={(e) => setDesigner(e.target.value)}
+            placeholder="Enter Designer name"
+          />
+          <Input
+            value={figmaLink}
+            onChange={(e) => setFigmaLink(e.target.value)}
+            placeholder="Enter Figma link"
+          />
+          <Input
+            value={projectLink}
+            onChange={(e) => setProjectLink(e.target.value)}
+            placeholder="Enter Project link"
+          />
+          <Button onClick={handleSaveAndShare}>
+            Save & Share
+          </Button>
+          <Textarea
+            value={projectNotes}
+            onChange={(e) => setProjectNotes(e.target.value)}
+            placeholder="Enter any additional notes for the project..."
+            rows={4}
+          />
+        </div>
+        
+        <SocialImagePreview url={figmaLink} />
+        
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>{category}</CardTitle>
+            <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            {checklist
-              .filter(item => item.category === category)
-              .map(item => (
-                <ChecklistItem
-                  key={item.id}
-                  item={item}
-                  checked={checkedItems[item.id] || false}
-                  onToggle={handleToggle}
-                  onDeadlineChange={handleDeadlineChange}
-                  onCommentAdd={handleCommentAdd}
-                  onCommentDelete={handleCommentDelete}
-                />
-              ))
-            }
+            <Progress value={getProgress()} className="w-full" />
+            <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
+              {Math.round(getProgress())}% Complete
+            </p>
           </CardContent>
         </Card>
-      ))}
 
-      <div className="mt-8 flex justify-between">
-        <Button
-          onClick={() => setIsApproveModalOpen(true)}
-          disabled={getProgress() !== 100}
-          variant={getProgress() === 100 ? "default" : "secondary"}
-        >
-          <Check className="mr-2" size={16} />
-          Approve Design
-        </Button>
-        <Button
-          onClick={() => setIsRequestChangesModalOpen(true)}
-          variant="destructive"
-        >
-          <X className="mr-2" size={16} />
-          Request Changes
-        </Button>
+        {categories.map(category => (
+          <Card key={category} className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-gray-900 dark:text-white">{category}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {checklist
+                .filter(item => item.category === category)
+                .map(item => (
+                  <ChecklistItem
+                    key={item.id}
+                    item={item}
+                    checked={checkedItems[item.id] || false}
+                    onToggle={handleToggle}
+                    onDeadlineChange={handleDeadlineChange}
+                    onCommentAdd={handleCommentAdd}
+                    onCommentDelete={handleCommentDelete}
+                  />
+                ))
+              }
+            </CardContent>
+          </Card>
+        ))}
+
+        <div className="mt-8 flex justify-between">
+          <Button
+            onClick={() => setIsApproveModalOpen(true)}
+            disabled={getProgress() !== 100}
+            variant={getProgress() === 100 ? "default" : "secondary"}
+          >
+            <Check className="mr-2" size={16} />
+            Approve Design
+          </Button>
+          <Button
+            onClick={() => setIsRequestChangesModalOpen(true)}
+            variant="destructive"
+          >
+            <X className="mr-2" size={16} />
+            Request Changes
+          </Button>
+        </div>
+
+        <EmailModal
+          isOpen={isApproveModalOpen}
+          onClose={() => setIsApproveModalOpen(false)}
+          onSend={(email) => {
+            sendEmail(email, true);
+            setIsApproveModalOpen(false);
+          }}
+          title="Approve Design"
+        />
+
+        <EmailModal
+          isOpen={isRequestChangesModalOpen}
+          onClose={() => setIsRequestChangesModalOpen(false)}
+          onSend={(email) => {
+            sendEmail(email, false);
+            setIsRequestChangesModalOpen(false);
+          }}
+          title="Request Changes"
+        />
+
+        <ShareModal 
+          isOpen={isShareModalOpen} 
+          onClose={() => setIsShareModalOpen(false)} 
+          url={shareableUrl} 
+        />
       </div>
-
-      <EmailModal
-        isOpen={isApproveModalOpen}
-        onClose={() => setIsApproveModalOpen(false)}
-        onSend={(email) => {
-          sendEmail(email, true);
-          setIsApproveModalOpen(false);
-        }}
-        title="Approve Design"
-      />
-
-      <EmailModal
-        isOpen={isRequestChangesModalOpen}
-        onClose={() => setIsRequestChangesModalOpen(false)}
-        onSend={(email) => {
-          sendEmail(email, false);
-          setIsRequestChangesModalOpen(false);
-        }}
-        title="Request Changes"
-      />
-
-      <ShareModal 
-        isOpen={isShareModalOpen} 
-        onClose={() => setIsShareModalOpen(false)} 
-        url={shareableUrl} 
-      />
     </div>
   );
 };
