@@ -148,7 +148,7 @@ const ThemeToggle = () => {
 };
 
 const Footer = () => (
-  <footer className="mt-12 py-6 bg-white dark:bg-gray-800 rounded-lg shadow-custom relative z-10">
+  <footer className="mt-12 py-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-custom relative z-10">
     <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center px-6 space-y-4 sm:space-y-0">
       <div className="flex space-x-4">
         <a 
@@ -180,7 +180,7 @@ const Footer = () => (
         href="https://bento.me/cellfade" 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="text-sm underline text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 cursor-pointer"
+        className="text-sm text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
           window.open('https://bento.me/cellfade', '_blank', 'noopener,noreferrer');
@@ -242,7 +242,11 @@ const DesignHandoffChecklist = () => {
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
-    setUploadedImage(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedImage(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const categories = [...new Set(checklist.map(item => item.category))];
@@ -347,12 +351,11 @@ const DesignHandoffChecklist = () => {
       className="min-h-screen bg-cover bg-center py-8 px-8 relative"
       style={{ backgroundImage: `url('https://iili.io/dnWNABt.png')` }}
     >
-      {/* Dark overlay for dark mode */}
       <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
            style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
       ></div>
       
-      <div className="container mx-auto max-w-4xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow-custom relative z-10">
+      <div className="container mx-auto max-w-4xl bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-custom relative z-10">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Design Handoff Checklist</h1>
           <ThemeToggle />
@@ -398,7 +401,7 @@ const DesignHandoffChecklist = () => {
           />
         </div>
         
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 py-4">
+        <div className="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 py-4">
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
