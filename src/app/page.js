@@ -148,7 +148,7 @@ const ThemeToggle = () => {
 };
 
 const Footer = () => (
-  <footer className="mt-12 py-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-custom relative z-10">
+  <footer className="mt-12 py-6 bg-white/30 dark:bg-gray-800/30 backdrop-blur-md rounded-lg shadow-custom relative z-10">
     <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center px-6 space-y-4 sm:space-y-0">
       <div className="flex space-x-4">
         <a 
@@ -180,7 +180,7 @@ const Footer = () => (
         href="https://bento.me/cellfade" 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="text-sm text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
+        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
           window.open('https://bento.me/cellfade', '_blank', 'noopener,noreferrer');
@@ -355,7 +355,7 @@ const DesignHandoffChecklist = () => {
            style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
       ></div>
       
-      <div className="container mx-auto max-w-4xl bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-custom relative z-10">
+      <div className="container mx-auto max-w-4xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-md p-6 rounded-lg shadow-custom relative z-10">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Design Handoff Checklist</h1>
           <ThemeToggle />
@@ -401,15 +401,15 @@ const DesignHandoffChecklist = () => {
           />
         </div>
         
-        <div className="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 py-4">
-          <Card className="mb-8">
+        <div className="sticky top-0 z-10 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md py-4">
+          <Card className="mb-8 bg-transparent">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
                 <div 
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+                  className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
                   style={{width: `${progress}%`}}
                 ></div>
               </div>
@@ -421,7 +421,7 @@ const DesignHandoffChecklist = () => {
         </div>
 
         {categories.map(category => (
-          <Card key={category} className="mb-6">
+          <Card key={category} className="mb-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">{category}</CardTitle>
             </CardHeader>
