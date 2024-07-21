@@ -415,54 +415,54 @@ const DesignHandoffChecklist = () => {
 
         {/* Progress bar card moved here, with sticky behavior and correct background styling */}
         <div className="sticky top-0 z-10 py-4">
-          <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
-                  style={{width: `${progress}%`}}
-                ></div>
-              </div>
-              <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
-                {Math.round(progress)}% Complete
-              </p>
-              
-              <div className="mt-4 flex flex-row justify-between items-center">
-                <div className="flex space-x-6">
-                  <Button
-                    onClick={() => setIsApproveModalOpen(true)}
-                    disabled={progress !== 100}
-                    className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center`}
-                  >
-                    <Check className="mr-2" size={16} />
-                    Approve Design
-                  </Button>
-                  <Button
-                    onClick={() => setIsRequestChangesModalOpen(true)}
-                    variant="destructive"
-                    className="flex items-center justify-center"
-                  >
-                    <X className="mr-2" size={16} />
-                    Request Changes
-                  </Button>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      Export <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardContent>
-          </Card>
+  <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
+    <CardHeader>
+      <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
+        <div 
+          className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+          style={{width: `${progress}%`}}
+        ></div>
+      </div>
+      <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
+        {Math.round(progress)}% Complete
+      </p>
+      
+      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
+          <Button
+            onClick={() => setIsApproveModalOpen(true)}
+            disabled={progress !== 100}
+            className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
+          >
+            <Check className="mr-2" size={16} />
+            Approve Design
+          </Button>
+          <Button
+            onClick={() => setIsRequestChangesModalOpen(true)}
+            variant="destructive"
+            className="flex items-center justify-center w-full sm:w-auto"
+          >
+            <X className="mr-2" size={16} />
+            Request Changes
+          </Button>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto">
+              Export <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
         {categories.map(category => (
           <Card key={category} className="mb-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
