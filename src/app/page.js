@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon, ClipboardCopy, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,13 @@ import { Progress } from '@/components/ui/progress';
 import { useTheme } from 'next-themes';
 import { encode, decode } from 'js-base64';
 import axios from 'axios';
+import { jsPDF } from 'jspdf';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const initialChecklist = [
   { id: 1, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
@@ -103,30 +110,6 @@ const EmailModal = ({ isOpen, onClose, onSend, title }) => {
   );
 };
 
-const ShareModal = ({ isOpen, onClose, url }) => {
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(url).then(() => {
-      alert('URL copied to clipboard!');
-    }, (err) => {
-      console.error('Could not copy text: ', err);
-    });
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Shareable Link</DialogTitle>
-        </DialogHeader>
-        <div className="mt-4">
-          <Input value={url} readOnly />
-          <Button onClick={copyToClipboard} className="mt-2">Copy to Clipboard</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -180,7 +163,7 @@ const Footer = () => (
         href="https://bento.me/cellfade" 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
+        className="text-sm underline text-white hover:text-blue-800 dark:text-white dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
           window.open('https://bento.me/cellfade', '_blank', 'noopener,noreferrer');
@@ -202,7 +185,6 @@ const DesignHandoffChecklist = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareableUrl, setShareableUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const { theme } = useTheme();
@@ -337,7 +319,12 @@ const DesignHandoffChecklist = () => {
     const longUrl = `${window.location.origin}${window.location.pathname}?state=${encodeURIComponent(stateString)}`;
     const shortUrl = await shortenUrl(longUrl);
     setShareableUrl(shortUrl);
-    setIsShareModalOpen(true);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(generateMarkdown(), 10, 10);
+    doc.save("design_handoff_checklist.pdf");
   };
 
   if (isLoading) {
@@ -349,7 +336,7 @@ const DesignHandoffChecklist = () => {
   return (
     <div 
       className="min-h-screen bg-cover bg-center py-8 px-8 relative"
-      style={{ backgroundImage: `url('https://iili.io/dnWNABt.png')` }}
+      style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
     >
       <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
            style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
@@ -386,13 +373,38 @@ const DesignHandoffChecklist = () => {
             onChange={handleImageUpload}
           />
           {uploadedImage && (
-            <div className="mt-4 border rounded-lg overflow-hidden">
+            <div className="mt-4 border rounded-lg overflow-hidden relative">
               <Image src={uploadedImage} alt="Uploaded preview" width={500} height={300} layout="responsive" />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2"
+                onClick={() => setUploadedImage(null)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           )}
-          <Button onClick={handleSaveAndShare}>
-            Save & Share
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button onClick={handleSaveAndShare}>
+              Save & Share
+            </Button>
+            {shareableUrl && (
+              <>
+                <Input value={shareableUrl} readOnly className="flex-grow" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareableUrl);
+                    alert('URL copied to clipboard!');
+                  }}
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
           <Textarea
             value={projectNotes}
             onChange={(e) => setProjectNotes(e.target.value)}
@@ -400,9 +412,10 @@ const DesignHandoffChecklist = () => {
             rows={4}
           />
         </div>
-        
-        <div className="sticky top-0 z-10 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md py-4">
-          <Card className="mb-8 bg-transparent">
+
+        {/* Progress bar card moved here, with sticky behavior and correct background styling */}
+        <div className="sticky top-0 z-10 py-4">
+          <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
             </CardHeader>
@@ -416,6 +429,37 @@ const DesignHandoffChecklist = () => {
               <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
                 {Math.round(progress)}% Complete
               </p>
+              
+              <div className="mt-4 flex flex-row justify-between items-center">
+                <div className="flex space-x-6">
+                  <Button
+                    onClick={() => setIsApproveModalOpen(true)}
+                    disabled={progress !== 100}
+                    className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center`}
+                  >
+                    <Check className="mr-2" size={16} />
+                    Approve Design
+                  </Button>
+                  <Button
+                    onClick={() => setIsRequestChangesModalOpen(true)}
+                    variant="destructive"
+                    className="flex items-center justify-center"
+                  >
+                    <X className="mr-2" size={16} />
+                    Request Changes
+                  </Button>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      Export <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -444,25 +488,6 @@ const DesignHandoffChecklist = () => {
           </Card>
         ))}
 
-        <div className="mt-8 flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
-          <Button
-            onClick={() => setIsApproveModalOpen(true)}
-            disabled={progress !== 100}
-            className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
-          >
-            <Check className="mr-2" size={16} />
-            Approve Design
-          </Button>
-          <Button
-            onClick={() => setIsRequestChangesModalOpen(true)}
-            variant="destructive"
-            className="w-full sm:w-auto flex items-center justify-center"
-          >
-            <X className="mr-2" size={16} />
-            Request Changes
-          </Button>
-        </div>
-
         <EmailModal
           isOpen={isApproveModalOpen}
           onClose={() => setIsApproveModalOpen(false)}
@@ -481,12 +506,6 @@ const DesignHandoffChecklist = () => {
             setIsRequestChangesModalOpen(false);
           }}
           title="Request Changes"
-        />
-
-        <ShareModal 
-          isOpen={isShareModalOpen} 
-          onClose={() => setIsShareModalOpen(false)} 
-          url={shareableUrl} 
         />
       </div>
       <div className="container mx-auto max-w-4xl">
