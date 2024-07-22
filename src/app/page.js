@@ -336,7 +336,7 @@ const DesignHandoffChecklist = () => {
   return (
     <div 
       className="min-h-screen bg-cover bg-center py-8 px-8 relative"
-      style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
+      style={{ backgroundImage: `url('https://iili.io/dnZDhap.png')` }}
     >
       <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
            style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
