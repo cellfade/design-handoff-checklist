@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon, ClipboardCopy, ChevronDown } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon, ClipboardCopy, ChevronDown, Upload } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -182,11 +182,13 @@ const DesignHandoffChecklist = () => {
   const [designerEmail, setDesignerEmail] = useState('');
   const [projectLink, setProjectLink] = useState('');
   const [projectNotes, setProjectNotes] = useState('');
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const [socialShareImage, setSocialShareImage] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
   const [shareableUrl, setShareableUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -197,6 +199,30 @@ const DesignHandoffChecklist = () => {
     }
     setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (projectLink) {
+      fetchSocialShareImage(projectLink);
+    }
+  }, [projectLink]);
+
+  useEffect(() => {
+    console.log("Checklist updated:", checklist);
+    console.log("Checked items updated:", checkedItems);
+    console.log("Designer updated:", designer);
+    console.log("Designer Email updated:", designerEmail);
+    console.log("Project Link updated:", projectLink);
+    console.log("Project Notes updated:", projectNotes);
+  }, [checklist, checkedItems, designer, designerEmail, projectLink, projectNotes]);
+
+  const fetchSocialShareImage = async (url) => {
+    try {
+      const response = await axios.get(`https://api.apiflash.com/v1/urltoimage?access_key=YOUR_API_KEY&url=${url}&format=png&width=1200&height=630`);
+      setSocialShareImage(response.config.url);
+    } catch (error) {
+      console.error('Error fetching social share image:', error);
+    }
+  };
 
   const handleToggle = (id) => {
     setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -222,13 +248,118 @@ const DesignHandoffChecklist = () => {
     ));
   };
 
-  const handleImageUpload = (event) => {
+  const handleProjectLinkChange = (e) => {
+    setProjectLink(e.target.value);
+  };
+
+  const handleProjectNotesChange = async (e) => {
+    const notes = e.target.value;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const matches = notes.match(urlRegex);
+    
+    if (matches) {
+      let updatedNotes = notes;
+      for (const url of matches) {
+        const shortUrl = await shortenUrl(url);
+        updatedNotes = updatedNotes.replace(url, shortUrl);
+      }
+      setProjectNotes(updatedNotes);
+    } else {
+      setProjectNotes(notes);
+    }
+  };
+
+  const shortenUrl = async (longUrl) => {
+    try {
+      const response = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error shortening URL:', error);
+      return longUrl; // Return original URL if shortening fails
+    }
+  };
+
+  const handleUploadPDF = async (event) => {
     const file = event.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setUploadedImage(reader.result);
-    };
-    reader.readAsDataURL(file);
+    if (file && file.type === 'application/pdf') {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const pdfData = new Uint8Array(e.target.result);
+        try {
+          const text = new TextDecoder().decode(pdfData);
+          console.log("PDF Content:", text); // Log the raw PDF content
+
+          const lines = text.split('\n');
+          
+          let currentCategory = '';
+          const newChecklist = JSON.parse(JSON.stringify(initialChecklist));
+          const newCheckedItems = {};
+          let newDesigner = '';
+          let newDesignerEmail = '';
+          let newProjectLink = '';
+          let newProjectNotes = '';
+
+          lines.forEach((line, index) => {
+            console.log(`Processing line ${index}:`, line); // Log each line being processed
+            if (line.startsWith('Designer:')) newDesigner = line.split(':')[1].trim();
+            else if (line.startsWith('Designer Email:')) newDesignerEmail = line.split(':')[1].trim();
+            else if (line.startsWith('Project Link:')) newProjectLink = line.split(':')[1].trim();
+            else if (line.startsWith('## Project Notes')) {
+              const notesIndex = lines.indexOf(line);
+              if (notesIndex !== -1 && notesIndex + 1 < lines.length) {
+                newProjectNotes = lines[notesIndex + 1].trim();
+              }
+            }
+            else if (line.startsWith('## ')) {
+              currentCategory = line.slice(3).trim();
+            }
+            else if (line.startsWith('- [')) {
+              const item = line.slice(6).trim();
+              const isChecked = line[3] === 'x';
+              const checklistItem = newChecklist.find(ci => ci.category === currentCategory && ci.item === item);
+              if (checklistItem) {
+                newCheckedItems[checklistItem.id] = isChecked;
+                console.log(`Updated item: ${item}, Checked: ${isChecked}`); // Log each checklist item update
+              }
+            }
+            else if (line.startsWith('Comments:')) {
+              const commentIndex = lines.indexOf(line);
+              if (commentIndex !== -1 && commentIndex + 1 < lines.length) {
+                const comment = lines[commentIndex + 1].trim().slice(2);
+                const checklistItem = newChecklist.find(ci => ci.category === currentCategory && ci.item === lines[commentIndex - 1].slice(6).trim());
+                if (checklistItem) {
+                  checklistItem.comments = [comment];
+                  console.log(`Added comment to item: ${checklistItem.item}, Comment: ${comment}`); // Log each comment addition
+                }
+              }
+            }
+          });
+
+          console.log("New Checklist:", newChecklist);
+          console.log("New Checked Items:", newCheckedItems);
+
+          // Update all state variables at once to trigger a single re-render
+          setChecklist(newChecklist);
+          setCheckedItems(newCheckedItems);
+          setDesigner(newDesigner);
+          setDesignerEmail(newDesignerEmail);
+          setProjectLink(newProjectLink);
+          setProjectNotes(newProjectNotes);
+          setUploadSuccess(true);
+          setUploadError('');
+
+          console.log("State updated with new values");
+        } catch (error) {
+          console.error('Error parsing PDF:', error);
+          setUploadError('Failed to parse the PDF. Please ensure it\'s in the correct format.');
+          setUploadSuccess(false);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setUploadError('Please upload a valid PDF file.');
+      setUploadSuccess(false);
+    }
   };
 
   const categories = [...new Set(checklist.map(item => item.category))];
@@ -284,7 +415,7 @@ const DesignHandoffChecklist = () => {
       designerEmail,
       projectLink,
       projectNotes,
-      uploadedImage
+      socialShareImage
     };
     return encode(JSON.stringify(state));
   };
@@ -298,19 +429,9 @@ const DesignHandoffChecklist = () => {
       setDesignerEmail(state.designerEmail || '');
       setProjectLink(state.projectLink || '');
       setProjectNotes(state.projectNotes || '');
-      setUploadedImage(state.uploadedImage || null);
+      setSocialShareImage(state.socialShareImage || null);
     } catch (error) {
       console.error('Error loading state:', error);
-    }
-  };
-
-  const shortenUrl = async (longUrl) => {
-    try {
-      const response = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error shortening URL:', error);
-      return longUrl; // Return original URL if shortening fails
     }
   };
 
@@ -336,7 +457,7 @@ const DesignHandoffChecklist = () => {
   return (
     <div 
       className="min-h-screen bg-cover bg-center py-8 px-8 relative"
-      style={{ backgroundImage: `url('https://iili.io/dnZDhap.png')` }}
+      style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
     >
       <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
            style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
@@ -364,25 +485,12 @@ const DesignHandoffChecklist = () => {
           />
           <Input
             value={projectLink}
-            onChange={(e) => setProjectLink(e.target.value)}
+            onChange={handleProjectLinkChange}
             placeholder="Enter Project link"
           />
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-          />
-          {uploadedImage && (
-            <div className="mt-4 border rounded-lg overflow-hidden relative">
-              <Image src={uploadedImage} alt="Uploaded preview" width={500} height={300} layout="responsive" />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2"
-                onClick={() => setUploadedImage(null)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          {socialShareImage && (
+            <div className="mt-4 border rounded-lg overflow-hidden">
+              <Image src={socialShareImage} alt="Social Share Preview" width={1200} height={630} layout="responsive" />
             </div>
           )}
           <div className="flex items-center space-x-2">
@@ -407,62 +515,81 @@ const DesignHandoffChecklist = () => {
           </div>
           <Textarea
             value={projectNotes}
-            onChange={(e) => setProjectNotes(e.target.value)}
+            onChange={handleProjectNotesChange}
             placeholder="Enter any additional notes for the project..."
             rows={4}
           />
         </div>
 
-        {/* Progress bar card moved here, with sticky behavior and correct background styling */}
         <div className="sticky top-0 z-10 py-4">
-  <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
-    <CardHeader>
-      <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
-        <div 
-          className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
-          style={{width: `${progress}%`}}
-        ></div>
-      </div>
-      <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
-        {Math.round(progress)}% Complete
-      </p>
-      
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-          <Button
-            onClick={() => setIsApproveModalOpen(true)}
-            disabled={progress !== 100}
-            className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
-          >
-            <Check className="mr-2" size={16} />
-            Approve Design
-          </Button>
-          <Button
-            onClick={() => setIsRequestChangesModalOpen(true)}
-            variant="destructive"
-            className="flex items-center justify-center w-full sm:w-auto"
-          >
-            <X className="mr-2" size={16} />
-            Request Changes
-          </Button>
+          <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+                  style={{width: `${progress}%`}}
+                ></div>
+              </div>
+              <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
+                {Math.round(progress)}% Complete
+              </p>
+              
+              <div className="mt-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
+                  <Button
+                    onClick={() => setIsApproveModalOpen(true)}
+                    disabled={progress !== 100}
+                    className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
+                  >
+                    <Check className="mr-2" size={16} />
+                    Approve Design
+                  </Button>
+                  <Button
+                    onClick={() => setIsRequestChangesModalOpen(true)}
+                    variant="destructive"
+                    className="flex items-center justify-center w-full sm:w-auto"
+                  >
+                    <X className="mr-2" size={16} />
+                    Request Changes
+                  </Button>
+                </div>
+                <div className="flex space-x-2 w-full sm:w-auto">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full sm:w-auto">
+                        Export <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <label className="cursor-pointer flex items-center justify-center">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        className="hidden"
+                        onChange={handleUploadPDF}
+                      />
+                      <Upload className="mr-2 h-4 w-4" />
+                      <span>Upload</span>
+                    </label>
+                  </Button>
+                </div>
+              </div>
+              {uploadSuccess && (
+                <p className="mt-2 text-sm text-green-600 dark:text-green-400">PDF uploaded and configuration loaded successfully!</p>
+              )}
+              {uploadError && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto">
-              Export <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardContent>
-  </Card>
-</div>
 
         {categories.map(category => (
           <Card key={category} className="mb-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
