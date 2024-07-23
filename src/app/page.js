@@ -206,18 +206,9 @@ const DesignHandoffChecklist = () => {
     }
   }, [projectLink]);
 
-  useEffect(() => {
-    console.log("Checklist updated:", checklist);
-    console.log("Checked items updated:", checkedItems);
-    console.log("Designer updated:", designer);
-    console.log("Designer Email updated:", designerEmail);
-    console.log("Project Link updated:", projectLink);
-    console.log("Project Notes updated:", projectNotes);
-  }, [checklist, checkedItems, designer, designerEmail, projectLink, projectNotes]);
-
   const fetchSocialShareImage = async (url) => {
     try {
-      const response = await axios.get(`https://api.apiflash.com/v1/urltoimage?access_key=YOUR_API_KEY&url=${url}&format=png&width=1200&height=630`);
+      const response = await axios.get(`https://api.apiflash.com/v1/urltoimage?access_key=cd04d91b0e164ae3a0da0cf15bb6f97f&url=${url}&format=png&width=1200&height=630`);
       setSocialShareImage(response.config.url);
     } catch (error) {
       console.error('Error fetching social share image:', error);
@@ -287,7 +278,7 @@ const DesignHandoffChecklist = () => {
         const pdfData = new Uint8Array(e.target.result);
         try {
           const text = new TextDecoder().decode(pdfData);
-          console.log("PDF Content:", text); // Log the raw PDF content
+          console.log("PDF Content:", text);
 
           const lines = text.split('\n');
           
@@ -299,37 +290,44 @@ const DesignHandoffChecklist = () => {
           let newProjectLink = '';
           let newProjectNotes = '';
 
+          let isInProjectNotes = false;
+
           lines.forEach((line, index) => {
-            console.log(`Processing line ${index}:`, line); // Log each line being processed
+            console.log(`Processing line ${index}:`, line);
             if (line.startsWith('Designer:')) newDesigner = line.split(':')[1].trim();
             else if (line.startsWith('Designer Email:')) newDesignerEmail = line.split(':')[1].trim();
             else if (line.startsWith('Project Link:')) newProjectLink = line.split(':')[1].trim();
             else if (line.startsWith('## Project Notes')) {
-              const notesIndex = lines.indexOf(line);
-              if (notesIndex !== -1 && notesIndex + 1 < lines.length) {
-                newProjectNotes = lines[notesIndex + 1].trim();
-              }
+              isInProjectNotes = true;
             }
             else if (line.startsWith('## ')) {
               currentCategory = line.slice(3).trim();
+              isInProjectNotes = false;
+            }
+            else if (isInProjectNotes) {
+              newProjectNotes += line.trim() + '\n';
             }
             else if (line.startsWith('- [')) {
-              const item = line.slice(6).trim();
               const isChecked = line[3] === 'x';
+              const item = line.slice(6).trim();
               const checklistItem = newChecklist.find(ci => ci.category === currentCategory && ci.item === item);
               if (checklistItem) {
                 newCheckedItems[checklistItem.id] = isChecked;
-                console.log(`Updated item: ${item}, Checked: ${isChecked}`); // Log each checklist item update
-              }
-            }
-            else if (line.startsWith('Comments:')) {
-              const commentIndex = lines.indexOf(line);
-              if (commentIndex !== -1 && commentIndex + 1 < lines.length) {
-                const comment = lines[commentIndex + 1].trim().slice(2);
-                const checklistItem = newChecklist.find(ci => ci.category === currentCategory && ci.item === lines[commentIndex - 1].slice(6).trim());
-                if (checklistItem) {
-                  checklistItem.comments = [comment];
-                  console.log(`Added comment to item: ${checklistItem.item}, Comment: ${comment}`); // Log each comment addition
+                console.log(`Updated item: ${item}, Checked: ${isChecked}`);
+
+                // Check for deadline
+                if (index + 1 < lines.length && lines[index + 1].trim().startsWith('Deadline:')) {
+                  checklistItem.deadline = lines[index + 1].split(':')[1].trim();
+                }
+
+                // Check for comments
+                if (index + 2 < lines.length && lines[index + 2].trim() === 'Comments:') {
+                  checklistItem.comments = [];
+                  let commentIndex = index + 3;
+                  while (commentIndex < lines.length && lines[commentIndex].trim().startsWith('-')) {
+                    checklistItem.comments.push(lines[commentIndex].trim().slice(2));
+                    commentIndex++;
+                  }
                 }
               }
             }
@@ -338,13 +336,13 @@ const DesignHandoffChecklist = () => {
           console.log("New Checklist:", newChecklist);
           console.log("New Checked Items:", newCheckedItems);
 
-          // Update all state variables at once to trigger a single re-render
+          // Update all state variables
           setChecklist(newChecklist);
           setCheckedItems(newCheckedItems);
           setDesigner(newDesigner);
           setDesignerEmail(newDesignerEmail);
           setProjectLink(newProjectLink);
-          setProjectNotes(newProjectNotes);
+          setProjectNotes(newProjectNotes.trim());
           setUploadSuccess(true);
           setUploadError('');
 
