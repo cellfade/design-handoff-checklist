@@ -12,13 +12,13 @@ export const metadata = {
     description: 'A comprehensive checklist for design handoff process',
     images: [
       {
-        url: 'https://your-website-url.com/path-to-your-og-image.jpg',
+        url: 'design-handoff-checklist.vercel.app/public/og-image-design-handoff-checklist.png',
         width: 1200,
         height: 630,
         alt: 'Design Handoff Checklist',
       },
     ],
-    url: 'https://your-website-url.com',
+    url: 'design-handoff-checklist.vercel.app',
     type: 'website',
   },
 }

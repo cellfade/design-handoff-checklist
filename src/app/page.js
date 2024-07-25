@@ -387,16 +387,16 @@ const DesignHandoffChecklist = () => {
     <>
       <Head>
         <title>Design Handoff Checklist</title>
-        <meta name="description" content="A comprehensive checklist for design handoff process" />
+        <meta name="description" content="A comprehensive checklist for the design handoff process" />
         <meta property="og:title" content="Design Handoff Checklist" />
-        <meta property="og:description" content="A comprehensive checklist for design handoff process" />
-        <meta property="og:image" content="/path-to-your-og-image.jpg" />
-        <meta property="og:url" content="https://your-website-url.com" />
+        <meta property="og:description" content="A comprehensive checklist for the design handoff process" />
+        <meta property="og:image" content="public/og-image-design-handoff-checklist.png" />
+        <meta property="og:url" content="https://design-handoff-checklist.vercel.app/" />
         <meta property="og:type" content="website" />
       </Head>
       <div 
         className="min-h-screen bg-cover bg-center py-8 px-8 relative"
-        style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
+        style={{ backgroundImage: `url('https://iili.io/dxhmzUN.png')` }}
       >
         <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
              style={{ opacity: theme === 'dark' ? 0.5 : 0 }}

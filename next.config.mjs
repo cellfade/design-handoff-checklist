@@ -2,7 +2,7 @@
 const nextConfig = {
     reactStrictMode: true,
     images: {
-      domains: ['your-allowed-domain.com', 'api.urlmeta.org'],
+      domains: ['https://design-handoff-checklist.vercel.app/', 'api.urlmeta.org'],
     },
   };
 
