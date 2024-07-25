@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
 import Image from 'next/image';
-import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon, ClipboardCopy, ChevronDown, Upload } from 'lucide-react';
+import { Check, X, Calendar, MessageSquare, Trash2, Sun, Moon, ClipboardCopy, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -23,21 +24,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const initialChecklist = [
-  { id: 1, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
-  { id: 2, category: 'Visual Design', item: 'Typography styles specified', deadline: '', comments: [] },
-  { id: 3, category: 'Visual Design', item: 'Iconography provided', deadline: '', comments: [] },
-  { id: 4, category: 'Layout', item: 'Responsive breakpoints defined', deadline: '', comments: [] },
-  { id: 5, category: 'Layout', item: 'Grid system specified', deadline: '', comments: [] },
-  { id: 6, category: 'Components', item: 'Button states designed', deadline: '', comments: [] },
-  { id: 7, category: 'Components', item: 'Form elements styled', deadline: '', comments: [] },
-  { id: 8, category: 'Components', item: 'Navigation components detailed', deadline: '', comments: [] },
-  { id: 9, category: 'Interaction', item: 'Hover states defined', deadline: '', comments: [] },
-  { id: 10, category: 'Interaction', item: 'Animations specified', deadline: '', comments: [] },
-  { id: 11, category: 'Assets', item: 'Image assets exported', deadline: '', comments: [] },
-  { id: 12, category: 'Assets', item: 'Icon set provided', deadline: '', comments: [] },
-  { id: 13, category: 'Documentation', item: 'Design system documentation', deadline: '', comments: [] },
-  { id: 14, category: 'Documentation', item: 'Interaction specifications', deadline: '', comments: [] },
-  { id: 15, category: 'Handoff', item: 'Zeplin/Figma links shared', deadline: '', comments: [] },
+  { id: 1, category: 'Design', item: 'Requirements', deadline: '', comments: [] },
+  { id: 2, category: 'Design', item: 'Research', deadline: '', comments: [] },
+  { id: 3, category: 'Design', item: 'Discovery', deadline: '', comments: [] },
+  { id: 4, category: 'Design', item: 'Testing/Prototype', deadline: '', comments: [] },
+  { id: 5, category: 'Design', item: 'Hi-fi Mock-ups', deadline: '', comments: [] },
+  { id: 6, category: 'Design', item: 'Design Sign-off', deadline: '', comments: [] },
+  { id: 7, category: 'Visual Design', item: 'Color palette defined', deadline: '', comments: [] },
+  { id: 8, category: 'Visual Design', item: 'Typography styles specified', deadline: '', comments: [] },
+  { id: 9, category: 'Visual Design', item: 'Iconography provided', deadline: '', comments: [] },
+  { id: 10, category: 'Layout', item: 'Responsive breakpoints defined', deadline: '', comments: [] },
+  { id: 11, category: 'Layout', item: 'Grid system specified', deadline: '', comments: [] },
+  { id: 12, category: 'Components', item: 'Button states designed', deadline: '', comments: [] },
+  { id: 13, category: 'Components', item: 'Form elements styled', deadline: '', comments: [] },
+  { id: 14, category: 'Components', item: 'Navigation components detailed', deadline: '', comments: [] },
+  { id: 15, category: 'Interaction', item: 'Variant states defined', deadline: '', comments: [] },
+  { id: 16, category: 'Interaction', item: 'Animations specified', deadline: '', comments: [] },
+  { id: 17, category: 'Assets', item: 'Image assets exported', deadline: '', comments: [] },
+  { id: 18, category: 'Assets', item: 'Icon set provided', deadline: '', comments: [] },
+  { id: 19, category: 'Documentation', item: 'Design system documentation', deadline: '', comments: [] },
+  { id: 20, category: 'Documentation', item: 'Interaction specifications', deadline: '', comments: [] },
+  { id: 21, category: 'Handoff', item: 'Design file links shared', deadline: '', comments: [] },
 ];
 
 const ChecklistItem = ({ item, checked, onToggle, onDeadlineChange, onCommentAdd, onCommentDelete }) => (
@@ -182,13 +189,12 @@ const DesignHandoffChecklist = () => {
   const [designerEmail, setDesignerEmail] = useState('');
   const [projectLink, setProjectLink] = useState('');
   const [projectNotes, setProjectNotes] = useState('');
-  const [socialShareImage, setSocialShareImage] = useState(null);
+  const [ogImage, setOgImage] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
   const [shareableUrl, setShareableUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadError, setUploadError] = useState('');
+  const [categoryToggles, setCategoryToggles] = useState({});
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -202,16 +208,17 @@ const DesignHandoffChecklist = () => {
 
   useEffect(() => {
     if (projectLink) {
-      fetchSocialShareImage(projectLink);
+      fetchOgImage(projectLink);
     }
   }, [projectLink]);
 
-  const fetchSocialShareImage = async (url) => {
+  const fetchOgImage = async (url) => {
     try {
-      const response = await axios.get(`https://api.apiflash.com/v1/urltoimage?access_key=cd04d91b0e164ae3a0da0cf15bb6f97f&url=${url}&format=png&width=1200&height=630`);
-      setSocialShareImage(response.config.url);
+      const response = await axios.get(`https://api.urlmeta.org/?url=${url}`);
+      const ogImageUrl = response.data.meta.image;
+      setOgImage(ogImageUrl);
     } catch (error) {
-      console.error('Error fetching social share image:', error);
+      console.error('Error fetching og:image:', error);
     }
   };
 
@@ -270,96 +277,6 @@ const DesignHandoffChecklist = () => {
     }
   };
 
-  const handleUploadPDF = async (event) => {
-    const file = event.target.files[0];
-    if (file && file.type === 'application/pdf') {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const pdfData = new Uint8Array(e.target.result);
-        try {
-          const text = new TextDecoder().decode(pdfData);
-          console.log("PDF Content:", text);
-
-          const lines = text.split('\n');
-          
-          let currentCategory = '';
-          const newChecklist = JSON.parse(JSON.stringify(initialChecklist));
-          const newCheckedItems = {};
-          let newDesigner = '';
-          let newDesignerEmail = '';
-          let newProjectLink = '';
-          let newProjectNotes = '';
-
-          let isInProjectNotes = false;
-
-          lines.forEach((line, index) => {
-            console.log(`Processing line ${index}:`, line);
-            if (line.startsWith('Designer:')) newDesigner = line.split(':')[1].trim();
-            else if (line.startsWith('Designer Email:')) newDesignerEmail = line.split(':')[1].trim();
-            else if (line.startsWith('Project Link:')) newProjectLink = line.split(':')[1].trim();
-            else if (line.startsWith('## Project Notes')) {
-              isInProjectNotes = true;
-            }
-            else if (line.startsWith('## ')) {
-              currentCategory = line.slice(3).trim();
-              isInProjectNotes = false;
-            }
-            else if (isInProjectNotes) {
-              newProjectNotes += line.trim() + '\n';
-            }
-            else if (line.startsWith('- [')) {
-              const isChecked = line[3] === 'x';
-              const item = line.slice(6).trim();
-              const checklistItem = newChecklist.find(ci => ci.category === currentCategory && ci.item === item);
-              if (checklistItem) {
-                newCheckedItems[checklistItem.id] = isChecked;
-                console.log(`Updated item: ${item}, Checked: ${isChecked}`);
-
-                // Check for deadline
-                if (index + 1 < lines.length && lines[index + 1].trim().startsWith('Deadline:')) {
-                  checklistItem.deadline = lines[index + 1].split(':')[1].trim();
-                }
-
-                // Check for comments
-                if (index + 2 < lines.length && lines[index + 2].trim() === 'Comments:') {
-                  checklistItem.comments = [];
-                  let commentIndex = index + 3;
-                  while (commentIndex < lines.length && lines[commentIndex].trim().startsWith('-')) {
-                    checklistItem.comments.push(lines[commentIndex].trim().slice(2));
-                    commentIndex++;
-                  }
-                }
-              }
-            }
-          });
-
-          console.log("New Checklist:", newChecklist);
-          console.log("New Checked Items:", newCheckedItems);
-
-          // Update all state variables
-          setChecklist(newChecklist);
-          setCheckedItems(newCheckedItems);
-          setDesigner(newDesigner);
-          setDesignerEmail(newDesignerEmail);
-          setProjectLink(newProjectLink);
-          setProjectNotes(newProjectNotes.trim());
-          setUploadSuccess(true);
-          setUploadError('');
-
-          console.log("State updated with new values");
-        } catch (error) {
-          console.error('Error parsing PDF:', error);
-          setUploadError('Failed to parse the PDF. Please ensure it\'s in the correct format.');
-          setUploadSuccess(false);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      setUploadError('Please upload a valid PDF file.');
-      setUploadSuccess(false);
-    }
-  };
-
   const categories = [...new Set(checklist.map(item => item.category))];
 
   const getProgress = () => {
@@ -378,21 +295,23 @@ const DesignHandoffChecklist = () => {
     }
     
     categories.forEach(category => {
-      markdown += `## ${category}\n\n`;
-      checklist
-        .filter(item => item.category === category)
-        .filter(item => includeAll || !checkedItems[item.id])
-        .forEach(item => {
-          markdown += `- [${checkedItems[item.id] ? 'x' : ' '}] ${item.item}\n`;
-          if (item.deadline) markdown += `  Deadline: ${item.deadline}\n`;
-          if (item.comments.length > 0) {
-            markdown += `  Comments:\n`;
-            item.comments.forEach(comment => {
-              markdown += `    - ${comment}\n`;
-            });
-          }
-          markdown += '\n';
-        });
+      if (categoryToggles[category] !== false) {
+        markdown += `## ${category}\n\n`;
+        checklist
+          .filter(item => item.category === category)
+          .filter(item => includeAll || !checkedItems[item.id])
+          .forEach(item => {
+            markdown += `- [${checkedItems[item.id] ? 'x' : ' '}] ${item.item}\n`;
+            if (item.deadline) markdown += `  Deadline: ${item.deadline}\n`;
+            if (item.comments.length > 0) {
+              markdown += `  Comments:\n`;
+              item.comments.forEach(comment => {
+                markdown += `    - ${comment}\n`;
+              });
+            }
+            markdown += '\n';
+          });
+      }
     });
 
     return markdown;
@@ -413,7 +332,7 @@ const DesignHandoffChecklist = () => {
       designerEmail,
       projectLink,
       projectNotes,
-      socialShareImage
+      categoryToggles
     };
     return encode(JSON.stringify(state));
   };
@@ -427,7 +346,7 @@ const DesignHandoffChecklist = () => {
       setDesignerEmail(state.designerEmail || '');
       setProjectLink(state.projectLink || '');
       setProjectNotes(state.projectNotes || '');
-      setSocialShareImage(state.socialShareImage || null);
+      setCategoryToggles(state.categoryToggles || {});
     } catch (error) {
       console.error('Error loading state:', error);
     }
@@ -446,6 +365,18 @@ const DesignHandoffChecklist = () => {
     doc.save("design_handoff_checklist.pdf");
   };
 
+  const handleCategoryToggle = (category) => {
+    setCategoryToggles(prev => {
+      const newState = { ...prev };
+      if (category in newState) {
+        newState[category] = !newState[category];
+      } else {
+        newState[category] = false;
+      }
+      return newState;
+    });
+  };
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -453,108 +384,117 @@ const DesignHandoffChecklist = () => {
   const progress = getProgress();
 
   return (
-    <div 
-      className="min-h-screen bg-cover bg-center py-8 px-8 relative"
-      style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
-    >
-      <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
-           style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
-      ></div>
-      
-      <div className="container mx-auto max-w-4xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-md p-6 rounded-lg shadow-custom relative z-10">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Design Handoff Checklist</h1>
-          <ThemeToggle />
-        </div>
+    <>
+      <Head>
+        <title>Design Handoff Checklist</title>
+        <meta name="description" content="A comprehensive checklist for design handoff process" />
+        <meta property="og:title" content="Design Handoff Checklist" />
+        <meta property="og:description" content="A comprehensive checklist for design handoff process" />
+        <meta property="og:image" content="/path-to-your-og-image.jpg" />
+        <meta property="og:url" content="https://your-website-url.com" />
+        <meta property="og:type" content="website" />
+      </Head>
+      <div 
+        className="min-h-screen bg-cover bg-center py-8 px-8 relative"
+        style={{ backgroundImage: `url('https://iili.io/dntJSbp.png')` }}
+      >
+        <div className="absolute inset-0 bg-black transition-opacity duration-300 ease-in-out" 
+             style={{ opacity: theme === 'dark' ? 0.5 : 0 }}
+        ></div>
         
-        <div className="space-y-4 mb-8">
-          <Input
-            value={designer}
-            onChange={(e) => setDesigner(e.target.value)}
-            placeholder="Enter Designer name"
-          />
-          <Input
-            type="email"
-            value={designerEmail}
-            onChange={(e) => setDesignerEmail(e.target.value)}
-            placeholder="Enter Designer email"
-            required
-            pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
-          />
-          <Input
-            value={projectLink}
-            onChange={handleProjectLinkChange}
-            placeholder="Enter Project link"
-          />
-          {socialShareImage && (
-            <div className="mt-4 border rounded-lg overflow-hidden">
-              <Image src={socialShareImage} alt="Social Share Preview" width={1200} height={630} layout="responsive" />
-            </div>
-          )}
-          <div className="flex items-center space-x-2">
-            <Button onClick={handleSaveAndShare}>
-              Save & Share
-            </Button>
-            {shareableUrl && (
-              <>
-                <Input value={shareableUrl} readOnly className="flex-grow" />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareableUrl);
-                    alert('URL copied to clipboard!');
-                  }}
-                >
-                  <ClipboardCopy className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+        <div className="container mx-auto max-w-4xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-md p-6 rounded-lg shadow-custom relative z-10">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Design Handoff Checklist</h1>
+            <ThemeToggle />
           </div>
-          <Textarea
-            value={projectNotes}
-            onChange={handleProjectNotesChange}
-            placeholder="Enter any additional notes for the project..."
-            rows={4}
-          />
-        </div>
-
-        <div className="sticky top-0 z-10 py-4">
-          <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
-                  style={{width: `${progress}%`}}
-                ></div>
+          
+          <div className="space-y-4 mb-8">
+            <Input
+              value={designer}
+              onChange={(e) => setDesigner(e.target.value)}
+              placeholder="Enter Designer name"
+            />
+            <Input
+              type="email"
+              value={designerEmail}
+              onChange={(e) => setDesignerEmail(e.target.value)}
+              placeholder="Enter Designer email"
+              required
+              pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+            />
+            <Input
+              value={projectLink}
+              onChange={handleProjectLinkChange}
+              placeholder="Enter Project link"
+            />
+            {ogImage && (
+              <div className="mt-4 border rounded-lg overflow-hidden">
+                <Image src={ogImage} alt="Project Preview" width={1200} height={630} layout="responsive" />
               </div>
-              <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
-                {Math.round(progress)}% Complete
-              </p>
-              
-              <div className="mt-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
+            )}
+            <div className="flex items-center space-x-2">
+              <Button onClick={handleSaveAndShare}>
+                Save & Share
+              </Button>
+              {shareableUrl && (
+                <>
+                  <Input value={shareableUrl} readOnly className="flex-grow" />
                   <Button
-                    onClick={() => setIsApproveModalOpen(true)}
-                    disabled={progress !== 100}
-                    className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareableUrl);
+                      alert('URL copied to clipboard!');
+                    }}
                   >
-                    <Check className="mr-2" size={16} />
-                    Approve Design
+                    <ClipboardCopy className="h-4 w-4" />
                   </Button>
-                  <Button
-                    onClick={() => setIsRequestChangesModalOpen(true)}
-                    variant="destructive"
-                    className="flex items-center justify-center w-full sm:w-auto"
-                  >
-                    <X className="mr-2" size={16} />
-                    Request Changes
-                  </Button>
+                </>
+              )}
+            </div>
+            <Textarea
+              value={projectNotes}
+              onChange={handleProjectNotesChange}
+              placeholder="Enter any additional notes for the project..."
+              rows={4}
+            />
+          </div>
+
+          <div className="sticky top-0 z-10 py-4">
+            <Card className="mb-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white">Overall Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5">
+                  <div 
+                    className="bg-blue-600/70 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+                    style={{width: `${progress}%`}}
+                  ></div>
                 </div>
-                <div className="flex space-x-2 w-full sm:w-auto">
+                <p className="text-right mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  {Math.round(progress)}% Complete
+                </p>
+                
+                <div className="mt-4 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                  <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
+                    <Button
+                      onClick={() => setIsApproveModalOpen(true)}
+                      disabled={progress !== 100}
+                      className={`${progress === 100 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto`}
+                    >
+                      <Check className="mr-2" size={16} />
+                      Approve Design
+                    </Button>
+                    <Button
+                      onClick={() => setIsRequestChangesModalOpen(true)}
+                      variant="destructive"
+                      className="flex items-center justify-center w-full sm:w-auto"
+                    >
+                      <X className="mr-2" size={16} />
+                      Request Changes
+                    </Button>
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="w-full sm:w-auto">
@@ -565,78 +505,66 @@ const DesignHandoffChecklist = () => {
                       <DropdownMenuItem onClick={exportToPDF}>Export as PDF</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <label className="cursor-pointer flex items-center justify-center">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={handleUploadPDF}
-                      />
-                      <Upload className="mr-2 h-4 w-4" />
-                      <span>Upload</span>
-                    </label>
-                  </Button>
                 </div>
-              </div>
-              {uploadSuccess && (
-                <p className="mt-2 text-sm text-green-600 dark:text-green-400">PDF uploaded and configuration loaded successfully!</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {categories.map(category => (
+            <Card key={category} className="mb-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-gray-900 dark:text-white">{category}</CardTitle>
+                <Switch
+                  checked={categoryToggles[category] !== false}
+                  onCheckedChange={() => handleCategoryToggle(category)}
+                />
+              </CardHeader>
+              {categoryToggles[category] !== false && (
+                <CardContent>
+                  {checklist
+                    .filter(item => item.category === category)
+                    .map(item => (
+                      <ChecklistItem
+                        key={item.id}
+                        item={item}
+                        checked={checkedItems[item.id] || false}
+                        onToggle={handleToggle}
+                        onDeadlineChange={handleDeadlineChange}
+                        onCommentAdd={handleCommentAdd}
+                        onCommentDelete={handleCommentDelete}
+                      />
+                    ))
+                  }
+                </CardContent>
               )}
-              {uploadError && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
-              )}
-            </CardContent>
-          </Card>
+            </Card>
+          ))}
+
+          <EmailModal
+            isOpen={isApproveModalOpen}
+            onClose={() => setIsApproveModalOpen(false)}
+            onSend={(email) => {
+              sendEmail(email, true);
+              setIsApproveModalOpen(false);
+            }}
+            title="Approve Design"
+          />
+
+          <EmailModal
+            isOpen={isRequestChangesModalOpen}
+            onClose={() => setIsRequestChangesModalOpen(false)}
+            onSend={(email) => {
+              sendEmail(email, false);
+              setIsRequestChangesModalOpen(false);
+            }}
+            title="Request Changes"
+          />
         </div>
-
-        {categories.map(category => (
-          <Card key={category} className="mb-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">{category}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {checklist
-                .filter(item => item.category === category)
-                .map(item => (
-                  <ChecklistItem
-                    key={item.id}
-                    item={item}
-                    checked={checkedItems[item.id] || false}
-                    onToggle={handleToggle}
-                    onDeadlineChange={handleDeadlineChange}
-                    onCommentAdd={handleCommentAdd}
-                    onCommentDelete={handleCommentDelete}
-                  />
-                ))
-              }
-            </CardContent>
-          </Card>
-        ))}
-
-        <EmailModal
-          isOpen={isApproveModalOpen}
-          onClose={() => setIsApproveModalOpen(false)}
-          onSend={(email) => {
-            sendEmail(email, true);
-            setIsApproveModalOpen(false);
-          }}
-          title="Approve Design"
-        />
-
-        <EmailModal
-          isOpen={isRequestChangesModalOpen}
-          onClose={() => setIsRequestChangesModalOpen(false)}
-          onSend={(email) => {
-            sendEmail(email, false);
-            setIsRequestChangesModalOpen(false);
-          }}
-          title="Request Changes"
-        />
+        <div className="container mx-auto max-w-4xl">
+          <Footer />
+        </div>
       </div>
-      <div className="container mx-auto max-w-4xl">
-        <Footer />
-      </div>
-    </div>
+    </>
   );
 };
 
