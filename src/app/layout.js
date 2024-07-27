@@ -12,7 +12,7 @@ export const metadata = {
     description: 'A comprehensive checklist for design handoff process',
     images: [
       {
-        url: 'design-handoff-checklist.vercel.app/public/og-image-design-handoff-checklist.png',
+        url: '/public/og-image-design-handoff-checklist.png',
         width: 1200,
         height: 630,
         alt: 'Design Handoff Checklist',
